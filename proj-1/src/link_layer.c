@@ -129,6 +129,9 @@ int llopen(LinkLayer connectionParameters) {
 int llwrite(const unsigned char *buf, int bufSize) {
     // TODO
 
+
+
+
     return 0;
 }
 
@@ -146,6 +149,40 @@ int llread(unsigned char *packet) {
 ////////////////////////////////////////////////
 int llclose(int showStatistics) {
     // TODO
+
+    // ESQUELETO
+
+    unsigned char *receivedFrame = malloc(5);
+    if ("Transmiter") {
+        printf("Fechando em modo Trasmitter\n");
+        /* enviar DISC, esperar DISC e enviar UA e fecha conexao */
+        while (TRUE) {
+            sendSupFrame(showStatistics, EM_CMD, DISC);
+            // Espera DISC
+            if (!receiveSupFrame()) continue;
+            break;
+        }
+        sendSupFrame(showStatistics, EM_CMD, UA);
+        close(showStatistics);
+        printf("Trasmitter fechado com sucesso\n");
+    } else { // RECEIVER
+        /* espera DISC, envia DISC, espera UA e fecha conexao */
+        printf("Fechando em modo Receiver\n");
+        while (TRUE) {
+            // Espera o DISC
+            if (!receiveSupFrame()) continue;
+            break;
+        }
+        while (TRUE) {
+            // Envia o DISC
+            sendSupFrame(showStatistics, EM_CMD, DISC);
+            // Esperar o UA
+            if (!receiveSupFrame()) continue;
+            break;
+        }
+        close(showStatistics);
+        printf("Receiver fechado com sucesso\n");
+    }
 
     return 1;
 }
