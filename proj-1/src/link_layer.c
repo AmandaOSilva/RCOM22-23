@@ -62,8 +62,6 @@ LinkLayerRole role;
 ////////////////////////////////////////////////
 // UTILS
 ////////////////////////////////////////////////
-
-
 void alarmHandler(int sig, LinkLayer* connectionParameters ){
     printf( "[ALARM] Timeout\n");
     alarmFlag = 1;
@@ -314,7 +312,7 @@ int llclose(int showStatistics) {
         while (TRUE) {
             sendSupFrame(showStatistics, EM_CMD, DISC);
             // Espera DISC
-            if (!receiveSupFrame()) continue;
+            if (!receiveSupFrame(showStatistics, receivedFrame, EM_CMD,DISC )) continue;
             break;
         }
         sendSupFrame(showStatistics, EM_CMD, UA);
@@ -330,8 +328,8 @@ int llclose(int showStatistics) {
         while (TRUE) {
             // Envia o DISC
             sendSupFrame(showStatistics, EM_CMD, DISC);
-            // Esperar o UA
-            if (!receiveSupFrame()) continue;
+            // A Esperar o UA
+            if (!receiveSupFrame(showStatistics, receivedFrame, EM_CMD, UA)) continue;
             break;
         }
         close(showStatistics);
