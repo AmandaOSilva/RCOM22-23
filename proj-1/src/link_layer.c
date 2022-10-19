@@ -272,7 +272,16 @@ int llopen(LinkLayer connectionParameters) {
             printf("Conexao estabelecida em modo Transmitter\n");
             break;
         }
-    } //Else Receiver
+    } else { // RECEIVER
+        printf("Abrindo em modo Receiver\n");
+        /* espera o SET e devolve o UA */
+        while (TRUE) {
+            if (!receiveSupFrame(fd, receivedFrame, EM_CMD, SET)) continue;
+            sendSupFrame(fd, EM_CMD, UA);
+            printf("Conexao estabelecida em modo Receiver\n");
+            break;
+        }
+    }
 
     return fd;
 }
