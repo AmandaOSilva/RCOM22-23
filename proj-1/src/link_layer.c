@@ -58,10 +58,21 @@ unsigned char REC_REJECTED = REJ1;
 int alarmFlag = 0;
 int verify = 0;
 LinkLayerRole role;
+int global_fd;
+
 
 ////////////////////////////////////////////////
 // UTILS
 ////////////////////////////////////////////////
+
+unsigned char calculateBCC(const unsigned char *buf, int size) {
+    unsigned char BCC = 0;
+    for (int i = 0; i < size; i++) {
+        BCC ^= buf[i]; //Bitwise exclusive OR and assignment
+    }
+    return BCC;
+}
+
 void alarmHandler(int sig, LinkLayer* connectionParameters ){
     printf( "[ALARM] Timeout\n");
     alarmFlag = 1;
@@ -263,7 +274,6 @@ int llopen(LinkLayer connectionParameters) {
                 return -1;
             }
 
-            //printf("Tentativa: %d\n", numAttempts);
             //Envia SET
             sendSupFrame(fd, EM_CMD, SET);
 
@@ -290,13 +300,63 @@ int llopen(LinkLayer connectionParameters) {
 // LLWRITE
 ////////////////////////////////////////////////
 int llwrite(const unsigned char *buf, int bufSize) {
-    // TODO
+    int res;
+    unsigned char bcc2 = calculateBCC(buf, bufSize);
+    int bcc2Size = 1;
+    int infoLength = bufSize + bcc2Size;
+    unsigned char *info = malloc((infoLength));
+    memcpy(info, buf, bufSize);
+    memcpy(&info[bufSize], &bcc2, bcc2Size);
+    unsigned char *stuffedData = stuffing(info, &infoLength);
+    unsigned char *frameData = malloc(5);
+    int sent = 0;
+    int received_status;
+    while (!sent) {
+            unsigned char *frame = malloc((infoLength + 5));
+            frame[FLAG_IND] = FR_FLAG;
+            frame[ADDR_IND] = EM_CMD;
+            frame[CTRL_IND] = SEND_SEQ;
+            frame[BCC_IND] = frame[ADDR_IND] ^ frame[CTRL_IND];
+            memcpy(&frame[4], stuffedData, infoLength);
+            frame[4 + infoLength] = FR_FLAG;
+            res = write(global_fd, frame, infoLength + 5);
+            free(frame);
+            if (res < 0) {
+                perror("Erro ao enviar frame\n");
+            }
+            alarm(10);
+            received_status = receiveSupFrame(global_fd, frameData, EM_CMD, REC_READY);
+            alarm(0);
+            if (received_status == 3) {
+                printf("\nFrame rejeitado. Reenviando...\n");
+                continue;
+            } else if (received_status == 0) {
+                continue;
+            }
+            if (frameData[CTRL_IND] != REC_READY)
+                continue;
+            sent = 1;
+            break;
 
 
-
-
-    return 0;
+    }
+    free(stuffedData);
+    free(frameData);
+    free(info);
+    //new values of freq
+    if (SEND_SEQ == II0) {
+        SEND_SEQ = II1;
+        REC_READY = RR0;
+        REC_REJECTED = REJ0;
+    } else {
+        SEND_SEQ = II0;
+        REC_READY = RR1;
+        REC_REJECTED = REJ1;
+    }
+    return res;
 }
+
+
 
 ////////////////////////////////////////////////
 // LLREAD
