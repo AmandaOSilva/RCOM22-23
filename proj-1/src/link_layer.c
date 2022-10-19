@@ -250,6 +250,84 @@ int setRole(LinkLayerRole aRole){
     return 1;
 }
 
+int receiveInfoFrame(int fd, unsigned char *frame, unsigned int *totalSize) {
+    set_states setMachine = START;
+    int res;
+    verify = 0;
+    int fail = 0;
+    alarmFlag = 0;
+    unsigned char input;
+    unsigned int ind = 4, acc = 0, current = 0;
+    while (!verify) {
+        // printf("Lendo info frame ...\n");
+        if (read(fd, &input, sizeof(unsigned char)) == -1) {
+            printf("\nTIMEOUT!\tTentando reconectar!\n");
+            return 0;
+        }
+        if (alarmFlag == 1) {
+            printf("\nAlarm!\tTentando novamente\n");
+            alarmFlag = 0;
+            alarm(0);
+            return 0;
+        }
+        frame[setMachine] = input;
+        switch (setMachine) {
+            case START:
+                //printf("START STATE: %02x\n", input);
+                if (input == FR_FLAG) {
+                    setMachine = FLAG_RCV;
+                }
+                break;
+
+            case FLAG_RCV:
+                //printf("FLAG STATE: %02x\n", input);
+                if (input == EM_CMD)
+                    setMachine = A_RCV;
+                else if (input != FR_FLAG)
+                    setMachine = START;
+                break;
+
+            case A_RCV:
+                //printf("A STATE: %02x\n", input);
+                if (input == SEND_SEQ)
+                    setMachine = C_RCV;
+                else if (input == FR_FLAG)
+                    setMachine = FLAG_RCV;
+                else
+                    setMachine = START;
+                break;
+
+            case C_RCV:
+                //printf("C STATE: %02x\n", input);
+                if (input == (EM_CMD ^ SEND_SEQ)) {
+                    setMachine = BCC_OK;
+                    break;
+                }
+                if (input == FR_FLAG)
+                    setMachine = FLAG_RCV;
+                else
+                    setMachine = START;
+                break;
+
+
+            default:
+                //  printf("INFO: %02x\n", input);
+                if (input == FR_FLAG) {
+                    alarm(0);
+                    verify = 1;
+                    break;
+                }
+                setMachine++;
+                acc = setMachine;
+                break;
+        }
+
+    }
+    *totalSize = acc + 1;
+    return 1;
+}
+
+
 ////////////////////////////////////////////////
 // LLOPEN
 ////////////////////////////////////////////////
@@ -362,8 +440,63 @@ int llwrite(const unsigned char *buf, int bufSize) {
 // LLREAD
 ////////////////////////////////////////////////
 int llread(unsigned char *packet) {
-    // TODO
+    /* read() informacao (I) */
+    unsigned char *frameData = malloc(BYTES_PER_PACKAGE * 2);
+    unsigned char *stuffed_data;
+    unsigned char *destuffed_data;
 
+    int rejected = 0;
+    int real_size = 0, data_size;
+    // reset();
+    int numAttempts = 0;
+    while (numAttempts < 3) {
+        rejected = 0;
+        alarm(10);
+        if (!receiveInfoFrame(global_fd, frameData, &real_size)) {
+            alarm(0);
+            sendSupFrame(global_fd, EM_CMD, REC_REJECTED);
+            rejected = 1;
+            continue;
+        }
+        alarm(0);
+        unsigned char *final_frame = malloc(real_size);
+        memcpy(final_frame, frameData, real_size);
+        *&data_size = real_size - 5;
+        unsigned char *data = (unsigned char *) malloc(*&data_size);
+        stuffed_data = memcpy(data, &final_frame[4], *&data_size);
+        destuffed_data = destuffing(stuffed_data, &data_size);
+        unsigned char received_bcc2 = destuffed_data[data_size - 1];
+
+        unsigned char calculated_bcc2 = calculateBCC(destuffed_data, data_size - 1);
+        if (received_bcc2 != calculated_bcc2) {
+            printf("\nBCC2 not recognized\n");
+            rejected = 1;
+            sendSupFrame(global_fd, EM_CMD, REC_REJECTED);
+            continue;
+        }
+        sendSupFrame(global_fd, EM_CMD, REC_READY);
+        if (!rejected) {
+            numAttempts = 0;
+            memcpy(packet, destuffed_data, data_size - 1);
+            free(frameData);
+            free(final_frame);
+            free(stuffed_data);
+            free(destuffed_data);
+            //new values of freq
+            if (SEND_SEQ == II0) {
+                SEND_SEQ = II1;
+                REC_READY = RR0;
+                REC_REJECTED = REJ0;
+            } else {
+                SEND_SEQ = II0;
+                REC_READY = RR1;
+                REC_REJECTED = REJ1;
+            }
+            return data_size - 1;
+        }
+        return -2;
+    }
+    return -1;
     return 0;
 }
 
@@ -391,7 +524,7 @@ int llclose(int showStatistics) {
         printf("Fechando em modo Receiver\n");
         while (TRUE) {
             // Espera o DISC
-            if (!receiveSupFrame()) continue;
+            if (!receiveSupFrame(showStatistics, receivedFrame, EM_CMD, DISC, RECEIVER)) continue;
             break;
         }
         while (TRUE) {
