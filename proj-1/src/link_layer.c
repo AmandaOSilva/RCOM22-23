@@ -306,7 +306,7 @@ int llclose(int showStatistics) {
 
     // ESQUELETO
     unsigned char *receivedFrame = malloc(5);
-    if ("Transmiter") {
+    if ( role == 'LlTx') {
         printf("Fechando em modo Trasmitter\n");
         /* Envia o DISC, Espera o DISC do receptor e envia a UA e fecha connexion */
         while (TRUE) {
