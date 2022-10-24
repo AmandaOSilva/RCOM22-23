@@ -6,8 +6,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include "link_layer.h"
-#include <../cable/cable.c>
 #include <stdbool.h>
+#include <signal.h>
+
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <termios.h>
+#include <unistd.h>
 
 #define BYTES_PER_PACKAGE 4 * 1024 // 4KB
 
@@ -44,6 +50,10 @@
 #define BCC_IND 3
 #define END_FLAG_IND 4
 
+// Baudrate settings are defined in <asm/termbits.h>, which is
+// included by <termios.h>
+#define BAUDRATE B38400
+
 
 typedef enum SET_STATES {
     START,
@@ -58,12 +68,40 @@ unsigned char REC_REJECTED = REJ1;
 int alarmFlag = 0;
 int verify = 0;
 LinkLayerRole role;
-int global_fd;
+int fd;
 
 
 ////////////////////////////////////////////////
 // UTILS
 ////////////////////////////////////////////////
+
+// Returns: serial port file descriptor (fd).
+int openSerialPort(const char *serialPort, struct termios *oldtio, struct termios *newtio)
+{
+    int fd = open(serialPort, O_RDWR | O_NOCTTY);
+
+    if (fd < 0)
+        return -1;
+
+    // Save current port settings
+    if (tcgetattr(fd, oldtio) == -1)
+        return -1;
+
+    memset(newtio, 0, sizeof(*newtio));
+    newtio->c_cflag = BAUDRATE | CS8 | CLOCAL | CREAD;
+    newtio->c_iflag = IGNPAR;
+    newtio->c_oflag = 0;
+    newtio->c_lflag = 0;
+    newtio->c_cc[VTIME] = 1; // Inter-character timer unused
+    newtio->c_cc[VMIN] = 0;  // Read without blocking
+    tcflush(fd, TCIOFLUSH);
+
+    if (tcsetattr(fd, TCSANOW, newtio) == -1)
+        return -1;
+
+    return fd;
+}
+
 
 unsigned char calculateBCC(const unsigned char *buf, int size) {
     unsigned char BCC = 0;
@@ -73,13 +111,13 @@ unsigned char calculateBCC(const unsigned char *buf, int size) {
     return BCC;
 }
 
-void alarmHandler(int sig, LinkLayer* connectionParameters ){
-    printf( "[ALARM] Timeout\n");
+void alarmHandler(int sig, LinkLayer *connectionParameters) {
+    printf("[ALARM] Timeout\n");
     alarmFlag = 1;
     connectionParameters->nRetransmissions++;
 }
 
-void sendSupFrame(int fd, unsigned char addr, unsigned char cmd) {
+void sendSupFrame(unsigned char addr, unsigned char cmd) {
     unsigned char *frame = malloc(5);
     frame[FLAG_IND] = FR_FLAG;
     frame[ADDR_IND] = addr;
@@ -90,19 +128,19 @@ void sendSupFrame(int fd, unsigned char addr, unsigned char cmd) {
     free(frame);
 }
 
-int receiveSupFrame(int fd, unsigned char *frame, unsigned char addr, unsigned char cmd) {
+int receiveSupFrame(unsigned char *frame, unsigned char addr, unsigned char cmd) {
     unsigned char input;
     int res = 1;
     verify = 0; // TODO REMEBEMBER o use this global on de llread
     alarmFlag = 0;
-    if ((role ==  'LlTx') && (cmd == UA || cmd == DISC)) {
+    if ((role == LlTx) && (cmd == UA || cmd == DISC)) {
         alarm(3);
     }
     int fail = 0;
     set_states set_machine = START;
     while (!verify) {
         // printf("Lendo sup frame ...\n");
-        if (read(fd, &input, sizeof(unsigned char)) < 0 ) {
+        if (read(fd, &input, sizeof(unsigned char)) < 0) {
             printf("\nTIMEOUT!\tRetrying connection!\n");
             return 0;
         }
@@ -188,9 +226,6 @@ int receiveSupFrame(int fd, unsigned char *frame, unsigned char addr, unsigned c
 }
 
 
-
-
-
 unsigned char *stuffing(unsigned char *frame, unsigned int *size) {
     unsigned char *result;
     unsigned int escapes = 0, newSize;
@@ -245,12 +280,13 @@ unsigned char *destuffing(unsigned char *frame, unsigned int *size) {
     }
     return result;
 }
-int setRole(LinkLayerRole aRole){
-    role  = aRole;
+
+int setRole(LinkLayerRole aRole) {
+    role = aRole;
     return 1;
 }
 
-int receiveInfoFrame(int fd, unsigned char *frame, unsigned int *totalSize) {
+int receiveInfoFrame(unsigned char *frame, unsigned int *totalSize) {
     set_states setMachine = START;
     int res;
     verify = 0;
@@ -334,14 +370,13 @@ int receiveInfoFrame(int fd, unsigned char *frame, unsigned int *totalSize) {
 int llopen(LinkLayer connectionParameters) {
     struct termios *oldtio;
     struct termios *newtio;
-    int fd;
     volatile int STOP = FALSE;
     char port[50] = {};
-    openSerialPort(connectionParameters.serialPort, oldtio, newtio);
+    fd = openSerialPort(connectionParameters.serialPort, oldtio, newtio);
     signal(SIGALRM, (void (*)(int)) alarmHandler);
     unsigned char *receivedFrame = malloc(5);
     setRole(connectionParameters.role);
-    if (role ==  'LlTx') {
+    if (role == LlTx) {
         unsigned char *receivedFrame = malloc(5);
 
         while (TRUE) {
@@ -353,10 +388,10 @@ int llopen(LinkLayer connectionParameters) {
             }
 
             //Envia SET
-            sendSupFrame(fd, EM_CMD, SET);
+            sendSupFrame(EM_CMD, SET);
 
             /* Wait for the UA */
-            if (!receiveSupFrame(fd, receivedFrame, EM_CMD, UA)) continue;
+            if (!receiveSupFrame(receivedFrame, EM_CMD, UA)) continue;
             printf("Conexao estabelecida em modo Transmitter\n");
             break;
         }
@@ -364,14 +399,14 @@ int llopen(LinkLayer connectionParameters) {
         printf("Abrindo em modo Receiver\n");
         /* espera o SET e devolve o UA */
         while (TRUE) {
-            if (!receiveSupFrame(fd, receivedFrame, EM_CMD, SET)) continue;
-            sendSupFrame(fd, EM_CMD, UA);
+            if (!receiveSupFrame(receivedFrame, EM_CMD, SET)) continue;
+            sendSupFrame(EM_CMD, UA);
             printf("Conexao estabelecida em modo Receiver\n");
             break;
         }
     }
 
-    return fd;
+    return 1;
 }
 
 ////////////////////////////////////////////////
@@ -390,31 +425,31 @@ int llwrite(const unsigned char *buf, int bufSize) {
     int sent = 0;
     int received_status;
     while (!sent) {
-            unsigned char *frame = malloc((infoLength + 5));
-            frame[FLAG_IND] = FR_FLAG;
-            frame[ADDR_IND] = EM_CMD;
-            frame[CTRL_IND] = SEND_SEQ;
-            frame[BCC_IND] = frame[ADDR_IND] ^ frame[CTRL_IND];
-            memcpy(&frame[4], stuffedData, infoLength);
-            frame[4 + infoLength] = FR_FLAG;
-            res = write(global_fd, frame, infoLength + 5);
-            free(frame);
-            if (res < 0) {
-                perror("Erro ao enviar frame\n");
-            }
-            alarm(10);
-            received_status = receiveSupFrame(global_fd, frameData, EM_CMD, REC_READY);
-            alarm(0);
-            if (received_status == 3) {
-                printf("\nFrame rejeitado. Reenviando...\n");
-                continue;
-            } else if (received_status == 0) {
-                continue;
-            }
-            if (frameData[CTRL_IND] != REC_READY)
-                continue;
-            sent = 1;
-            break;
+        unsigned char *frame = malloc((infoLength + 5));
+        frame[FLAG_IND] = FR_FLAG;
+        frame[ADDR_IND] = EM_CMD;
+        frame[CTRL_IND] = SEND_SEQ;
+        frame[BCC_IND] = frame[ADDR_IND] ^ frame[CTRL_IND];
+        memcpy(&frame[4], stuffedData, infoLength);
+        frame[4 + infoLength] = FR_FLAG;
+        res = write(fd, frame, infoLength + 5);
+        free(frame);
+        if (res < 0) {
+            perror("Erro ao enviar frame\n");
+        }
+        alarm(10);
+        received_status = receiveSupFrame(frameData, EM_CMD, REC_READY);
+        alarm(0);
+        if (received_status == 3) {
+            printf("\nFrame rejeitado. Reenviando...\n");
+            continue;
+        } else if (received_status == 0) {
+            continue;
+        }
+        if (frameData[CTRL_IND] != REC_READY)
+            continue;
+        sent = 1;
+        break;
 
 
     }
@@ -435,7 +470,6 @@ int llwrite(const unsigned char *buf, int bufSize) {
 }
 
 
-
 ////////////////////////////////////////////////
 // LLREAD
 ////////////////////////////////////////////////
@@ -452,9 +486,9 @@ int llread(unsigned char *packet) {
     while (numAttempts < 3) {
         rejected = 0;
         alarm(10);
-        if (!receiveInfoFrame(global_fd, frameData, &real_size)) {
+        if (!receiveInfoFrame(frameData, &real_size)) {
             alarm(0);
-            sendSupFrame(global_fd, EM_CMD, REC_REJECTED);
+            sendSupFrame(EM_CMD, REC_REJECTED);
             rejected = 1;
             continue;
         }
@@ -471,10 +505,10 @@ int llread(unsigned char *packet) {
         if (received_bcc2 != calculated_bcc2) {
             printf("\nBCC2 not recognized\n");
             rejected = 1;
-            sendSupFrame(global_fd, EM_CMD, REC_REJECTED);
+            sendSupFrame(EM_CMD, REC_REJECTED);
             continue;
         }
-        sendSupFrame(global_fd, EM_CMD, REC_READY);
+        sendSupFrame(EM_CMD, REC_READY);
         if (!rejected) {
             numAttempts = 0;
             memcpy(packet, destuffed_data, data_size - 1);
@@ -504,37 +538,36 @@ int llread(unsigned char *packet) {
 // LLCLOSE
 ////////////////////////////////////////////////
 int llclose(int showStatistics) {
-    // TODO
+    // TODO show statistics !!
 
-    // ESQUELETO
     unsigned char *receivedFrame = malloc(5);
-    if ( role == 'LlTx') {
+    if (role == LlTx) {
         printf("Fechando em modo Trasmitter\n");
         /* Envia o DISC, Espera o DISC do receptor e envia a UA e fecha connexion */
         while (TRUE) {
-            sendSupFrame(showStatistics, EM_CMD, DISC);
+            sendSupFrame( EM_CMD, DISC);
             // Espera DISC
-            if (!receiveSupFrame(showStatistics, receivedFrame, EM_CMD,DISC )) continue;
+            if (!receiveSupFrame( receivedFrame, EM_CMD, DISC)) continue;
             break;
         }
-        sendSupFrame(showStatistics, EM_CMD, UA);
-        close(showStatistics);
+        sendSupFrame(EM_CMD, UA);
+        close(fd);
     } else { // RECEIVER
         /* espera DISC, envia DISC, espera UA e fecha conexao */
         printf("Fechando em modo Receiver\n");
         while (TRUE) {
             // Espera o DISC
-            if (!receiveSupFrame(showStatistics, receivedFrame, EM_CMD, DISC, RECEIVER)) continue;
+            if (!receiveSupFrame(receivedFrame, EM_CMD, DISC)) continue;
             break;
         }
         while (TRUE) {
             // Envia o DISC
-            sendSupFrame(showStatistics, EM_CMD, DISC);
+            sendSupFrame(EM_CMD, DISC);
             // A Esperar o UA
-            if (!receiveSupFrame(showStatistics, receivedFrame, EM_CMD, UA)) continue;
+            if (!receiveSupFrame( receivedFrame, EM_CMD, UA)) continue;
             break;
         }
-        close(showStatistics);
+        close(fd);
         printf("Receiver fechado com sucesso\n");
     }
 

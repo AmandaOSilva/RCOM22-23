@@ -16,7 +16,6 @@
 //   $3: filename
 int main(int argc, char *argv[])
 {
-    //TODO o receptor recebe o ficheiro???????
     if (argc < 4)
     {
         printf("Usage: %s /dev/ttySxx tx|rx filename\n", argv[0]);
