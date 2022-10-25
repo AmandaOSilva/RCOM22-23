@@ -11,7 +11,7 @@
 #define APP_PARAM_SIZE 0x00
 #define APP_PARAM_NAME 0x01
 
-#define BYTES_PER_PACKAGE 4 * 1024 // 4KB
+#define BYTES_PER_PACKAGE 1 * 1024 // 4KB
 #define INFO_LENGTH 4
 
 typedef enum SET_STATES_RECEIVE {

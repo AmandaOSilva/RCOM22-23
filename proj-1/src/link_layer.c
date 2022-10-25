@@ -15,7 +15,7 @@
 //#include <termios.h>
 #include <unistd.h>
 
-#define BYTES_PER_PACKAGE 4 * 1024 // 4KB
+#define BYTES_PER_PACKAGE 1 * 1024 // 4KB
 
 #define TRANSMITTER 0
 #define RECEIVER 1
@@ -67,6 +67,7 @@ unsigned char REC_READY = RR1;
 unsigned char REC_REJECTED = REJ1;
 int alarmFlag = 0;
 int verify = 0;
+
 LinkLayerRole role;
 int fd;
 
@@ -86,16 +87,15 @@ int openSerialPort(const char *serialPort, struct termios *oldtio, struct termio
     // Save current port settings
     if (tcgetattr(fd, oldtio) == -1)
         return -1;
-    printf("antes mset\n");
-
     memset(newtio, 0, sizeof(*newtio));
-    printf("depois mset\n");
+
     newtio->c_cflag = BAUDRATE | CS8 | CLOCAL | CREAD;
     newtio->c_iflag = IGNPAR;
     newtio->c_oflag = 0;
     newtio->c_lflag = 0;
     newtio->c_cc[VTIME] = 1; // Inter-character timer unused
     newtio->c_cc[VMIN] = 0;  // Read without blocking
+
     tcflush(fd, TCIOFLUSH);
 
     if (tcsetattr(fd, TCSANOW, newtio) == -1)
@@ -501,9 +501,13 @@ int llread(unsigned char *packet) {
         unsigned char *data = (unsigned char *) malloc(*&data_size);
         stuffed_data = memcpy(data, &final_frame[4], *&data_size);
         destuffed_data = destuffing(stuffed_data, &data_size);
+        for (int i = 0; i < 10; ++i) {
+            printf(" %02x", destuffed_data[i]);
+        }
         unsigned char received_bcc2 = destuffed_data[data_size - 1];
 
         unsigned char calculated_bcc2 = calculateBCC(destuffed_data, data_size - 1);
+        printf(" Bcc2   |%d|, |%d|", (int)received_bcc2, (int)calculated_bcc2);
         if (received_bcc2 != calculated_bcc2) {
             printf("\nBCC2 not recognized\n");
             rejected = 1;

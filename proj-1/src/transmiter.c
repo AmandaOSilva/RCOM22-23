@@ -12,7 +12,7 @@
 #define APP_PARAM_SIZE 0x00
 #define APP_PARAM_NAME 0x01
 
-#define BYTES_PER_PACKAGE 4 * 1024 // 4KB
+#define BYTES_PER_PACKAGE 1 * 1024 // 4KB
 #define INFO_LENGTH 4
 
 void sendControlPackage(const char *filename, const int bufferSize, const int control) {
@@ -43,11 +43,11 @@ void sendControlPackage(const char *filename, const int bufferSize, const int co
     };
 }
 
-void sendDataPackage(const char *buffer, const int packageSeq, const int packageSize) {
+void sendDataPackage(const unsigned char *buffer, const int packageSeq, const int packageSize) {
     int packageFrameSize = 4 + packageSize; // controlo, tamanho e nome
 
     printf("Tamanho do pacote: %d\n", packageFrameSize);
-    char *packageFrame = malloc(packageFrameSize);
+    unsigned char *packageFrame = malloc(packageFrameSize);
     packageFrame[0] = APP_DATA;
     //tamanho
     packageFrame[1] = packageSeq;
@@ -87,7 +87,7 @@ void sendData(int bufferSize, FILE *file) {//Envia  dados
         if (packageSeq == qtyPackage)
             packageSize = bufferSize % packageSize;
         printf("Enviando: seq=%d, size=%d\n", packageSeq, packageSize);
-        char *buffer = malloc(packageSize);
+        unsigned char *buffer = malloc(packageSize);
         fread(buffer, packageSize, 1, file);
         printf("Leu arquivo\n");
         sendDataPackage(buffer, packageSeq, packageSize);
@@ -97,9 +97,7 @@ void sendData(int bufferSize, FILE *file) {//Envia  dados
 
 int transmit(LinkLayer connectionParameters, const char *filename) {
     srand(time(NULL));
-    printf("antes llopen\n");
     llopen(connectionParameters);
-    printf("depois llopen\n");
     int bufferSize;
 
     // abrirt arquivo
@@ -107,7 +105,6 @@ int transmit(LinkLayer connectionParameters, const char *filename) {
     if (file == NULL) {
         return -1;
     }
-    printf("depois abrir arquivo\n");
 
     //envia pacote START
     sendControlPackage(filename, bufferSize, APP_START);
