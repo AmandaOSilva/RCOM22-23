@@ -1,45 +1,68 @@
 // Application layer protocol implementation
 
-#include "link_layer.h"
+
+#include "../include/link_layer.h"
 #include "string.h"
 
 void applicationLayer(const char *serialPort, const char *role, int baudRate,
                       int nTries, int timeout, const char *filename) {
-    printf("paramentros: %s, %s", serialPort, role);
+
+    printf("Starting link-layer protocol application\n"
+           "  - Serial port: %s\n"
+           "  - Role: %s\n"
+           "  - Baudrate: %d\n"
+           "  - Number of tries: %d\n"
+           "  - Timeout: %d\n"
+           "  - Filename: %s\n",
+           serialPort,
+           role,
+           baudRate,
+           nTries,
+           timeout,
+           filename);
+
+
+   // printf("paramentros: %s, %s,%d, %d, %s \n", serialPort, role, baudRate, nTries, timeout, filename);
 
     LinkLayer connectionParameters;
-//            {
-//            serialPort,
-//            role,
-//            baudRate,
-//            nTries,
-//            timeout
-//    };
 
-    // int x = strlen(serialPort);
-    //  printf(x);
-    strcpy(connectionParameters.serialPort, &serialPort);
+    strcpy(connectionParameters.serialPort, serialPort);
     connectionParameters.baudRate = baudRate;
     connectionParameters.nRetransmissions = nTries;
     connectionParameters.timeout = timeout;
 
-    //if (role == "tx") {
-    connectionParameters.role = LlTx;;
-    transmit(connectionParameters, filename);
-    //}
+    printf("Role param: |%s|\n",role);
 
-
-
-//    // TODO
-//
-//    typedef struct
-//    {
-//        char serialPort[50];
-//        LinkLayerRole role;
-//        int baudRate;
-//        int nRetransmissions;
-//        int timeout;
-//    } LinkLayer;
-
+    if (strcmp(role,"tx")) {
+        printf("RX ==========================\n");
+        connectionParameters.role = LlRx;;
+        printf("ConnectionParameters\n"
+               "  - Serial port: %s\n"
+               "  - Role: %d\n"
+               "  - Baudrate: %d\n"
+               "  - Number of tries: %d\n"
+               "  - Timeout: %d\n",
+               connectionParameters.serialPort,
+               connectionParameters.role,
+               connectionParameters.baudRate,
+               connectionParameters.nRetransmissions,
+               connectionParameters.timeout);
+        recept(connectionParameters, filename);
+    } else {
+        printf("TX ==========================\n");
+        connectionParameters.role = LlTx;;
+        printf("ConnectionParameters\n"
+               "  - Serial port: |%s|\n"
+               "  - Role: |%d|\n"
+               "  - Baudrate: |%d|\n"
+               "  - Number of tries: |%d|\n"
+               "  - Timeout: |%d|\n",
+               connectionParameters.serialPort,
+               connectionParameters.role,
+               connectionParameters.baudRate,
+               connectionParameters.nRetransmissions,
+               connectionParameters.timeout);
+        transmit(connectionParameters, filename);
+    }
 
 }

@@ -97,7 +97,9 @@ void sendData(int bufferSize, FILE *file) {//Envia  dados
 
 int transmit(LinkLayer connectionParameters, const char *filename) {
     srand(time(NULL));
+    printf("antes llopen\n");
     llopen(connectionParameters);
+    printf("depois llopen\n");
     int bufferSize;
 
     // abrirt arquivo
@@ -105,6 +107,7 @@ int transmit(LinkLayer connectionParameters, const char *filename) {
     if (file == NULL) {
         return -1;
     }
+    printf("depois abrir arquivo\n");
 
     //envia pacote START
     sendControlPackage(filename, bufferSize, APP_START);
