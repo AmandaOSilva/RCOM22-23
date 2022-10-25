@@ -1,18 +1,18 @@
 // Link layer protocol implementation
 
-#include <sys/termios.h>
+#include <termios.h>
 #include <sys/fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "link_layer.h"
+#include "../include/link_layer.h"
 #include <stdbool.h>
 #include <signal.h>
 
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <termios.h>
+//#include <termios.h>
 #include <unistd.h>
 
 #define BYTES_PER_PACKAGE 4 * 1024 // 4KB
@@ -86,8 +86,10 @@ int openSerialPort(const char *serialPort, struct termios *oldtio, struct termio
     // Save current port settings
     if (tcgetattr(fd, oldtio) == -1)
         return -1;
+    printf("antes mset\n");
 
     memset(newtio, 0, sizeof(*newtio));
+    printf("depois mset\n");
     newtio->c_cflag = BAUDRATE | CS8 | CLOCAL | CREAD;
     newtio->c_iflag = IGNPAR;
     newtio->c_oflag = 0;
@@ -368,11 +370,11 @@ int receiveInfoFrame(unsigned char *frame, unsigned int *totalSize) {
 // LLOPEN
 ////////////////////////////////////////////////
 int llopen(LinkLayer connectionParameters) {
-    struct termios *oldtio;
-    struct termios *newtio;
+    struct termios oldtio;
+    struct termios newtio;
     volatile int STOP = FALSE;
     char port[50] = {};
-    fd = openSerialPort(connectionParameters.serialPort, oldtio, newtio);
+    fd = openSerialPort(connectionParameters.serialPort, &oldtio, &newtio);
     signal(SIGALRM, (void (*)(int)) alarmHandler);
     unsigned char *receivedFrame = malloc(5);
     setRole(connectionParameters.role);
