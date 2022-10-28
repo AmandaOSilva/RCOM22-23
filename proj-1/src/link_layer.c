@@ -133,7 +133,7 @@ void sendSupFrame(unsigned char addr, unsigned char cmd) {
 int receiveSupFrame(unsigned char *frame, unsigned char addr, unsigned char cmd) {
     unsigned char input;
     int res = 1;
-    verify = 0; // TODO REMEBEMBER o use this global on de llread
+    verify = 0;
     alarmFlag = 0;
     if ((role == LlTx) && (cmd == UA || cmd == DISC)) {
         alarm(3);
@@ -427,6 +427,8 @@ int llwrite(const unsigned char *buf, int bufSize) {
     int sent = 0;
     int received_status;
     while (!sent) {
+        // Send Info frame
+        // | F | A | C | BBC1 | Data | BBC2 | F |
         unsigned char *frame = malloc((infoLength + 5));
         frame[FLAG_IND] = FR_FLAG;
         frame[ADDR_IND] = EM_CMD;
@@ -434,7 +436,7 @@ int llwrite(const unsigned char *buf, int bufSize) {
         frame[BCC_IND] = frame[ADDR_IND] ^ frame[CTRL_IND];
         memcpy(&frame[4], stuffedData, infoLength);
         frame[4 + infoLength] = FR_FLAG;
-        res = write(fd, frame, infoLength + 5);
+        res = write(fd, frame, infoLength + 5);//
         free(frame);
         if (res < 0) {
             perror("Erro ao enviar frame\n");

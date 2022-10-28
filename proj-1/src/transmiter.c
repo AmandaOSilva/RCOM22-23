@@ -24,7 +24,7 @@ void sendControlPackage(const char *filename, const int bufferSize, const int co
     packageFrame[0] = control;
     //tamanho
     packageFrame[1] = APP_PARAM_SIZE;
-    packageFrame[2] = 2;
+    packageFrame[2] = 2;// start
     packageFrame[3] = bufferSize / 256;
     packageFrame[4] = bufferSize % 256;
     printf("tamanho: %d, %d\n", bufferSize / 256, bufferSize % 256);
@@ -100,7 +100,7 @@ int transmit(LinkLayer connectionParameters, const char *filename) {
     llopen(connectionParameters);
     int bufferSize;
 
-    // abrirt arquivo
+    // abrir arquivo
     FILE *file = openFile(filename, &bufferSize);
     if (file == NULL) {
         return -1;
@@ -112,7 +112,6 @@ int transmit(LinkLayer connectionParameters, const char *filename) {
     sendData(bufferSize, file);
     // envia pacote de END
     sendControlPackage(filename, bufferSize, APP_END);
-
     // Fecha conexao
     llclose(0); //TODO: tratar show statistics
     fclose(file);
