@@ -37,8 +37,8 @@ Os testes efectuados foram os seguintes:
     • Teste normal de verificação se o funcionaria a transmição de dados sem nenhuma interrupção ou interferência – transmite os dados sem qualquer problema e sem nenhum erro durante o processo;
     • Teste com com dois alarmes antes de voltar a ligar a porta série – demonstrou a mensagem de que o caminho para a transmissão de dados estava fechada com o alarme sem problema e depois do segundo alarme foi transmitidos os dados corretamente;
     • Teste com a porta série fechada inicialmente e depois aberta a partir do primeiro alarme – foi mostrado a mensagem do alarme e depois de aberta a porta o program conseguiu transmitir o dados sem problema;
-    • Teste na mudança de Bytes transmitidos por cada ciclo de tranferência de dados – teste foi falhado uma vez que no código não foi posto a possibilidade de testar isso;
-    • ;
+    • Teste na mudança do tamanho dos blocos de informação na camada de aplicação – teste foi falhado uma vez que no código não foi posto a possibilidade de testar isso;
+    • Teste de acréscimo de ruído na transmissão – foi detetado uma maior dificuldade a transmitir os dados mas no final foram transmitidos;
 
 8.Eficiência do protocolo de ligação de dados
 
