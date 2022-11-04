@@ -38,7 +38,7 @@ Os testes efectuados foram os seguintes:
     • Teste com com dois alarmes antes de voltar a ligar a porta série – demonstrou a mensagem de que o caminho para a transmissão de dados estava fechada com o alarme sem problema e depois do segundo alarme foi transmitidos os dados corretamente;
     • Teste com a porta série fechada inicialmente e depois aberta a partir do primeiro alarme – foi mostrado a mensagem do alarme e depois de aberta a porta o program conseguiu transmitir o dados sem problema;
     • Teste na mudança do tamanho dos blocos de informação na camada de aplicação – teste foi falhado uma vez que no código não foi posto a possibilidade de testar isso;
-    • Teste de acréscimo de ruído na transmissão – foi detetado uma maior dificuldade a transmitir os dados mas no final foram transmitidos;
+    • Teste de acréscimo de ruído na transmissão – foi detetado uma maior dificuldade a transmitir criando dados defeituosos/errados mas na verificação do BBC isso foi visto e feita a retransmissão do pacote de dados dando finalmente os dados corretamente;
 
 8.Eficiência do protocolo de ligação de dados
 
