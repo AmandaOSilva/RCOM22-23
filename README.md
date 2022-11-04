@@ -22,3 +22,24 @@ Este trabalho tem como objetivos implementar um protocolo de ligação de dados 
 Com este relatório cobriremos todos estes tópicos e será realizado a explicação dos passos tomados de maneira a desenvolver uma síntese capaz de explicar o que é resolvido e aprendido neste trabalho laboratorial.
 
 2. Arquitetura
+
+3.Estrutura do código
+
+4.Casos de uso principais
+
+5.Protocolo de ligação lógica
+
+6.Protocolo de aplicação
+
+7.Validação
+
+Os testes efectuados foram os seguintes:
+    • Teste normal de verificação se o funcionaria a transmição de dados sem nenhuma interrupção ou interferência – transmite os dados sem qualquer problema e sem nenhum erro durante o processo;
+    • Teste com com dois alarmes antes de voltar a ligar a porta série – demonstrou a mensagem de que o caminho para a transmissão de dados estava fechada com o alarme sem problema e depois do segundo alarme foi transmitidos os dados corretamente;
+    • Teste com a porta série fechada inicialmente e depois aberta a partir do primeiro alarme – foi mostrado a mensagem do alarme e depois de aberta a porta o program conseguiu transmitir o dados sem problema;
+    • Teste na mudança de Bytes transmitidos por cada ciclo de tranferência de dados – teste foi falhado uma vez que no código não foi posto a possibilidade de testar isso;
+    • ;
+
+8.Eficiência do protocolo de ligação de dados
+
+9.Conclusões
