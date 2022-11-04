@@ -5,8 +5,8 @@ João Miguel Ferreira de Araújo Pinto Correia up201905892
 Amanda de Oliveira Silva up201800698
 
 Sumário:
-O trabalho tem como desenvolvimento uma programação capaz de criar um programa que transmita informação do transmissor para o recetor de forma correta de maneira a ambos conseguirem obter e reter a mesma informação.
-Foi concluida a finalidade desse desenvolvimento com a possibilidade de transmitir informações com o uso do nosso programa mesmo com algumas interferências criadas manualmente, os testes usados para verificar o programa.
+O trabalho tem como desenvolvimento uma programação capaz de criar um método de transmissão de dados a partir transmissor para o recetor de forma correta de maneira a ambos conseguirem obter e reter os mesmos dados.
+Foi concluido esse desenvolvimento com a possibilidade de transmitir dados com o uso do nosso código mesmo com algumas interferências criadas manualmente, testes usados para verificar a eficiência do nosso código.
 
 1. Introdução
 
